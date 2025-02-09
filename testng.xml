@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suite name="Test Suite">
+    <test name="XE Real Estate Tests">
+        <classes>
+            <class name="com.xegr.qa.XERealEstateTest"/>  <!-- Ensure this matches your Java class -->
+        </classes>
+    </test>
+</suite>
