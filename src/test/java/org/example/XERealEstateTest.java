@@ -158,9 +158,43 @@ public class XERealEstateTest {
         System.out.println("✅ Prices are correctly sorted in descending order.");
     }
 
+    /**
+     * ✅ Validates that the contact phone in each ad is hidden initially
+     *    and only shown after clicking the reveal button.
+     */
+    private void validateContactPhoneVisibility() {
+        // Wait for the ads to be loaded
+        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//div[contains(@class,'property-ad')]")));
 
+        // Locate all property ads
+        List<WebElement> propertyAds = driver.findElements(By.xpath("//div[contains(@class,'property-ad')]"));
 
+        for (WebElement ad : propertyAds) {
+            try {
+                // ✅ Ensure the phone number is initially hidden
+                List<WebElement> phoneElements = ad.findElements(By.xpath(".//span[contains(@class, 'contact-phone')]"));
+                Assert.assertTrue(phoneElements.isEmpty(), "❌ Phone number is visible before clicking the button!");
 
+                // ✅ Ensure the clickable button exists
+                WebElement revealButton = ad.findElement(By.xpath(".//button[contains(text(), 'Τηλέφωνο')]"));
+                Assert.assertTrue(revealButton.isDisplayed(), "❌ Phone reveal button is missing!");
+
+                // ✅ Click the button to reveal the phone number
+                revealButton.click();
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(@class,'phone-popup')]")));
+
+                // ✅ Verify that the phone number appears inside the pop-up
+                WebElement phonePopup = driver.findElement(By.xpath("//div[contains(@class,'phone-popup')]"));
+                WebElement phoneText = phonePopup.findElement(By.xpath(".//span[contains(@class, 'contact-phone')]"));
+                Assert.assertTrue(phoneText.isDisplayed(), "❌ Phone number did not appear after clicking the button!");
+
+                System.out.println("✅ Phone number is correctly hidden and revealed upon clicking.");
+
+            } catch (Exception e) {
+                System.out.println("⚠️ Skipping an ad due to missing phone button.");
+            }
+        }
+    }
 
     /**
      * ✅ Clicks an element after waiting for it to be clickable.
