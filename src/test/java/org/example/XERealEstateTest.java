@@ -120,7 +120,7 @@ public class XERealEstateTest {
     }
 
     /**
-     * ✅ Validates that no property ad contains more than the specified max number of images.
+     * ✅ Validates that no property ad contains more than the specified max number of images. Test
      */
     private void validateMaxImagesInAd(int maxImages) {
         wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//a[contains(@href, '/property/d/enoikiaseis-katoikion/')]//div[contains(@class, 'common-property-ad-image')]//img\n")));
