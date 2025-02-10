@@ -1,0 +1,42 @@
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import io.github.bonigarcia.wdm.WebDriverManager;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+public class XePropertyScraper {
+    public static void main(String[] args) {
+        // Setup ChromeDriver
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless"); // Runs browser in the background
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
+        // Initialize WebDriver
+        WebDriver driver = new ChromeDriver(options);
+
+        // Open the website
+        String url = "https://www.xe.gr/property/results?geo_place_ids%5B%5D=ChIJy1stSUK9oRQRi9ObJcOmO20&item_type=re_residence&maximum_price=700&maximum_size=150&minimum_price=200&minimum_size=75&sorting=price_desc&transaction_name=rent";
+        driver.get(url);
+
+        // Wait for elements to load
+        driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+
+        // Locate property titles using XPath
+        List<WebElement> propertyTitles = driver.findElements(By.xpath("//h3[contains(@data-testid, 'property-ad-title')]"));
+
+        // Print extracted titles
+        System.out.println("Property Titles:");
+        for (WebElement title : propertyTitles) {
+            System.out.println(title.getText());
+        }
+
+        // Close the browser
+        driver.quit();
+    }
+}
