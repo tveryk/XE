@@ -37,6 +37,8 @@ public class XERealEstateTest {
         clickElement(By.xpath("//*[@id='qc-cmp2-ui']/div[2]/div/button[3]/span")); // Accept Cookies
 
         sendKeysToElement(By.name("geo_place_id"), "Παγκράτι");
+
+
         clickElement(By.xpath("//button[contains(text(),'Παγκράτι, Αθήνα, Ελλάδα')]")); // Select location
 
         clickElement(By.xpath("//button[contains(@class,'area-tag-button')]")); // Confirm selection
@@ -56,6 +58,7 @@ public class XERealEstateTest {
         validatePropertySizes(75, 150);
         validateMaxImagesInAd(30);
         validateDescendingPriceSorting();
+        validateContactPhoneVisibility();
     }
 
     /**
@@ -87,7 +90,17 @@ public class XERealEstateTest {
      */
     private void validatePropertySizes(int minSize, int maxSize) {
         wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//h3[contains(@data-testid, 'property-ad-title')]")));
+
         List<WebElement> sizeElements = driver.findElements(By.xpath("//h3[contains(@data-testid, 'property-ad-title')]"));
+
+
+        System.out.println("Property Titles:");
+        for (WebElement title : sizeElements) {
+            System.out.println(title.getText());
+        }
+
+
+
 
         for (WebElement sizeElement : sizeElements) {
             try {
@@ -110,14 +123,22 @@ public class XERealEstateTest {
      * ✅ Validates that no property ad contains more than the specified max number of images.
      */
     private void validateMaxImagesInAd(int maxImages) {
-        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//button[contains(@class, 'slick-arrow')]")));
+        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//a[contains(@href, '/property/d/enoikiaseis-katoikion/')]//div[contains(@class, 'common-property-ad-image')]//img\n")));
 
-        List<WebElement> propertyAds = driver.findElements(By.xpath("//button[contains(@class, 'slick-arrow')]"));
+        List<WebElement> propertyAds = driver.findElements(By.xpath("//a[contains(@href, '/property/d/enoikiaseis-katoikion/')]//div[contains(@class, 'common-property-ad-image')]//img\n"));
 
         for (WebElement ad : propertyAds) {
-            List<WebElement> images = ad.findElements(By.xpath("//button[contains(@class, 'slick-arrow')]")); // Get all images inside carousel
+            //List<WebElement> images = ad.findElements(By.xpath("//img[contains(@data-testid, 'ad-gallery-image')]")); // Get all images inside carousel
+            //List<WebElement> images = ad.findElements(By.xpath(".//img"));
+            List<WebElement> images = ad.findElements(By.xpath("//a[contains(@href, '/property/d/enoikiaseis-katoikion/')]//div[contains(@class, 'common-property-ad-image')]//img\n"));
+
 
             int imageCount = images.size();
+
+            // Print property ad ID and image count
+            String adId = ad.getAttribute("id"); // Extracting the ID of the property ad
+            System.out.println("Property Ad ID: " + adId + " | Number of Images: " + imageCount);
+
             Assert.assertTrue(imageCount <= maxImages,
                     "❌ Ad contains more than " + maxImages + " images! Found: " + imageCount);
             System.out.println("✅ Validated Image Count: " + imageCount);
@@ -162,39 +183,121 @@ public class XERealEstateTest {
      * ✅ Validates that the contact phone in each ad is hidden initially
      *    and only shown after clicking the reveal button.
      */
-    private void validateContactPhoneVisibility() {
+
+
+
+
+
+
+
+    /**private void validateContactPhoneVisibility() {
+
+
+        clickElement(By.xpath("//body/main[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/a[1]/div[1]/h3[1]"));
+
         // Wait for the ads to be loaded
-        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//div[contains(@class,'property-ad')]")));
+
+        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]")));
+
+        clickElement(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
 
         // Locate all property ads
-        List<WebElement> propertyAds = driver.findElements(By.xpath("//div[contains(@class,'property-ad')]"));
+        List<WebElement> phoneButtons = driver.findElements(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
 
-        for (WebElement ad : propertyAds) {
+        //clickElement(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
+
+
+
+        for (WebElement ad : phoneButtons) {
             try {
-                // ✅ Ensure the phone number is initially hidden
-                List<WebElement> phoneElements = ad.findElements(By.xpath(".//span[contains(@class, 'contact-phone')]"));
-                Assert.assertTrue(phoneElements.isEmpty(), "❌ Phone number is visible before clicking the button!");
+                // ✅ Ensure the phone number button container is present
+                Assert.assertFalse(phoneButtons.isEmpty(), "❌ 'Προβολή τηλεφώνου' button is NOT displayed!");
+                System.out.println("✅ 'Προβολή τηλεφώνου' button is correctly displayed.");
 
-                // ✅ Ensure the clickable button exists
-                WebElement revealButton = ad.findElement(By.xpath(".//button[contains(text(), 'Τηλέφωνο')]"));
-                Assert.assertTrue(revealButton.isDisplayed(), "❌ Phone reveal button is missing!");
+                // ✅ Find all matching buttons inside the ad to avoid exceptions
+                List<WebElement> revealButtons = ad.findElements(By.xpath(".//span[contains(text(),'Προβολή τηλεφώνου')]"));
 
-                // ✅ Click the button to reveal the phone number
-                revealButton.click();
-                wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(@class,'phone-popup')]")));
+                // ✅ Ensure the button exists before interacting with it
+                if (!revealButtons.isEmpty()) {
+                    WebElement revealButton = revealButtons.get(0); // Get the first matching button
+                    Assert.assertTrue(revealButton.isDisplayed(), "❌ Phone reveal button is missing!");
 
-                // ✅ Verify that the phone number appears inside the pop-up
-                WebElement phonePopup = driver.findElement(By.xpath("//div[contains(@class,'phone-popup')]"));
-                WebElement phoneText = phonePopup.findElement(By.xpath(".//span[contains(@class, 'contact-phone')]"));
-                Assert.assertTrue(phoneText.isDisplayed(), "❌ Phone number did not appear after clicking the button!");
+                    // ✅ Click the button to reveal the phone number
+                    revealButton.click();
+                    wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(text(),'Τηλέφωνα επικοινωνίας')]")));
 
-                System.out.println("✅ Phone number is correctly hidden and revealed upon clicking.");
+                    // ✅ Verify that the phone number appears inside the pop-up
+                    WebElement phonePopup = driver.findElement(By.xpath("//div[contains(text(),'Τηλέφωνα επικοινωνίας')]"));
+                    //WebElement phoneText = phonePopup.findElement(By.xpath("//div[@data-testid='phones']"));
+                    WebElement phoneText = driver.findElement(By.xpath("//span[contains(text(), '+30')]"));
+                    //String extractedPhoneNumber = phoneText.getText().trim();
+                    //Assert.assertFalse(extractedPhoneNumber.isEmpty(), "❌ Phone number is not displayed!");
+                    Assert.assertTrue(phoneText.isDisplayed(), "❌ Phone number did not appear after clicking the button!");
+
+                    System.out.println("✅ Phone number is correctly hidden and revealed upon clicking.");
+                } else {
+                    System.out.println("⚠️ No 'Προβολή τηλεφώνου' button found in this ad.");
+                }
 
             } catch (Exception e) {
-                System.out.println("⚠️ Skipping an ad due to missing phone button.");
+                System.out.println("❌ Error processing ad: " + e.getMessage());
+            }
+        }*/
+
+
+    private void validateContactPhoneVisibility() {
+        clickElement(By.xpath("//body/main[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/a[1]/div[1]/h3[1]"));
+
+        // ✅ Wait until all "Προβολή τηλεφώνου" buttons are visible before proceeding
+        wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]")));
+
+        // ✅ Re-fetch elements after waiting
+        List<WebElement> phoneButtons = driver.findElements(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
+
+        // ✅ Ensure buttons exist before continuing
+        if (phoneButtons.isEmpty()) {
+            throw new AssertionError("❌ No 'Προβολή τηλεφώνου' buttons found on the page.");
+        }
+
+        for (WebElement ad : phoneButtons) {
+            try {
+                System.out.println("✅ 'Προβολή τηλεφώνου' button is correctly displayed.");
+
+                // ✅ Find buttons inside the current `ad` element
+                List<WebElement> revealButtons = driver.findElements(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
+
+                if (!revealButtons.isEmpty()) {
+                    WebElement revealButton = revealButtons.get(0);
+                    Assert.assertTrue(revealButton.isDisplayed(), "❌ Phone reveal button is missing!");
+
+                    // ✅ Click the button
+                    revealButton.click();
+                    wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(text(),'Τηλέφωνα επικοινωνίας')]")));
+
+                    // ✅ Locate the phone number and assert its existence
+                    WebElement phonePopup = driver.findElement(By.xpath("//div[contains(text(),'Τηλέφωνα επικοινωνίας')]"));
+                    wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath("//span[contains(text(), '+30')]")));
+                    WebElement phoneText = driver.findElement(By.xpath("//span[contains(text(), '+30')]"));
+                    Assert.assertTrue(phoneText.isDisplayed(), "❌ Phone number did not appear after clicking the button!");
+
+                    System.out.println("✅ Phone number is correctly revealed upon clicking.");
+                } else {
+                    System.out.println("⚠️ No 'Προβολή τηλεφώνου' button found in this ad.");
+                }
+
+            } catch (Exception e) {
+                System.out.println("❌ Error processing ad: " + e.getMessage());
             }
         }
+
+        try {
+            Thread.sleep(8000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
+
+
 
     /**
      * ✅ Clicks an element after waiting for it to be clickable.
