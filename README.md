@@ -30,6 +30,7 @@ This project is a **Selenium WebDriver** test suite written in **Java** for auto
 ### 1️⃣ **Clone the Repository**
 ```sh
 git clone https://github.com/tveryk/XE.git
+cd XE/src/test/java/org/example/XERealEstateTest.java
 
 ## Ensure you have Maven installed. Run:
 mvn clean install
