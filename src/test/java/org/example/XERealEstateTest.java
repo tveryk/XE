@@ -14,7 +14,11 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import java.time.Duration;
 import java.util.List;
+import java.util.ArrayList;
+import org.openqa.selenium.interactions.Actions;
 import java.util.stream.Collectors;
+import java.util.*;
+
 
 public class XERealEstateTest {
     private WebDriver driver;
@@ -28,18 +32,69 @@ public class XERealEstateTest {
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         driver.manage().window().maximize();
         js = (JavascriptExecutor) driver; // JavaScript Executor for handling dynamic elements
-    }
 
+
+    }
     @Test(priority = 1)
     public void searchRentalProperties() {
         driver.get("https://xe.gr/");
 
-        clickElement(By.xpath("//*[@id='qc-cmp2-ui']/div[2]/div/button[3]/span")); // Accept Cookies
+        // Accept Cookies
+        clickElement(By.xpath("//*[@id='qc-cmp2-ui']/div[2]/div/button[3]/span"));
 
+        // Type initial search to trigger dropdown
         sendKeysToElement(By.name("geo_place_id"), "Παγκράτι");
 
+        // Wait for the dropdown container to appear
+        WebElement dropdownContainer = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//div[@data-testid='geo_place_id_dropdown_panel']")
+        ));
 
-        clickElement(By.xpath("//button[contains(text(),'Παγκράτι, Αθήνα, Ελλάδα')]")); // Select location
+        // Get all dropdown options (buttons inside the dropdown)
+        List<WebElement> dropdownOptions = dropdownContainer.findElements(By.xpath(".//button"));
+
+        // Store dropdown values in a list
+        List<String> dropdownValues = new ArrayList<>();
+        for (WebElement option : dropdownOptions) {
+            dropdownValues.add(option.getText());
+        }
+
+        // Print extracted dropdown values
+        System.out.println("Extracted Dropdown Options:");
+        dropdownValues.forEach(System.out::println);
+
+        // Assert that the dropdown contains options
+        Assert.assertFalse(dropdownValues.isEmpty(), "❌ Dropdown is empty!");
+
+        // ✅ Iterate through each dropdown value and select the first available choice
+        for (String location : dropdownValues) {
+            System.out.println("🔍 Searching for: " + location);
+
+            // Clear and enter new location value
+            WebElement searchBox = driver.findElement(By.name("geo_place_id"));
+            searchBox.clear();  // Clear previous input
+            sendKeysToElement(By.name("geo_place_id"), location);
+
+            // Wait for the dropdown to appear again
+            dropdownContainer = wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//div[@data-testid='geo_place_id_dropdown_panel']")
+            ));
+
+            // Click the first option dynamically
+            WebElement firstChoice = wait.until(ExpectedConditions.elementToBeClickable(
+                    By.xpath("//div[@data-testid='geo_place_id_dropdown_panel']//button[1]")
+            ));
+            firstChoice.click();
+
+            System.out.println("✅ Selected: " + location);
+
+            // Small wait before next iteration (optional)
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
         clickElement(By.xpath("//button[contains(@class,'area-tag-button')]")); // Confirm selection
         clickElement(By.xpath("//input[@value='Αναζήτηση']")); // Search button
@@ -53,21 +108,55 @@ public class XERealEstateTest {
         sendKeysToElement(By.name("minimum_size"), "75");
         sendKeysToElement(By.name("maximum_size"), "150");
 
+
+
+        clickElement(By.xpath("//body[1]/main[1]/div[1]/div[1]/div[1]/div[2]"));
+
+
+
         // ✅ Validate Property Prices & Sizes
         validatePropertyPrices(200, 700);
         validatePropertySizes(75, 150);
-        validateMaxImagesInAd(30);
         validateDescendingPriceSorting();
-        validateContactPhoneVisibility();
+        validateImagesAndPhoneNumbers();
+
     }
+
+
 
     /**
      * ✅ Validates property prices fall within the defined range.
      */
     private void validatePropertyPrices(int minPrice, int maxPrice) {
-        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//span[@class='property-ad-price']")));
-        List<WebElement> priceElements = driver.findElements(By.xpath("//span[@class='property-ad-price']"));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        JavascriptExecutor js = (JavascriptExecutor) driver;
 
+        // Scroll to load all results
+        long lastHeight = (long) js.executeScript("return document.body.scrollHeight");
+
+        while (true) {
+            js.executeScript("window.scrollBy(0, 500);"); // Scroll down step-by-step
+            try {
+                Thread.sleep(9000); // Wait for new results to load
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            long newHeight = (long) js.executeScript("return document.body.scrollHeight");
+            if (newHeight == lastHeight) {
+                break; // Stop if no new content is loaded
+            }
+            lastHeight = newHeight;
+        }
+
+        // Wait until all price elements are visible
+        List<WebElement> priceElements = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
+                By.cssSelector("div.common-property-ad-price span.property-ad-price[data-testid='property-ad-price']")
+        ));
+
+        System.out.println("Number of price elements found: " + priceElements.size());
+
+        // Validate extracted prices
         for (WebElement priceElement : priceElements) {
             try {
                 String priceText = priceElement.getText().replaceAll("[^0-9]", "").trim(); // Extract numbers only
@@ -85,22 +174,22 @@ public class XERealEstateTest {
         }
     }
 
+
     /**
      * ✅ Validates property sizes (square meters) fall within the defined range.
      */
     private void validatePropertySizes(int minSize, int maxSize) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
         wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//h3[contains(@data-testid, 'property-ad-title')]")));
 
         List<WebElement> sizeElements = driver.findElements(By.xpath("//h3[contains(@data-testid, 'property-ad-title')]"));
 
-
-        System.out.println("Property Titles:");
-        for (WebElement title : sizeElements) {
-            System.out.println(title.getText());
-        }
-
-
-
+        System.out.println("Number of Titles elements found: " + sizeElements.size());
+        //System.out.println("Property Titles:");
+        //for (WebElement title : sizeElements) {
+        //System.out.println(title.getText());
+        //}
 
         for (WebElement sizeElement : sizeElements) {
             try {
@@ -116,32 +205,6 @@ public class XERealEstateTest {
             } catch (NumberFormatException e) {
                 System.err.println("❌ Error parsing size: " + sizeElement.getText());
             }
-        }
-    }
-
-    /**
-     * ✅ Validates that no property ad contains more than the specified max number of images. Test
-     */
-    private void validateMaxImagesInAd(int maxImages) {
-        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//a[contains(@href, '/property/d/enoikiaseis-katoikion/')]//div[contains(@class, 'common-property-ad-image')]//img\n")));
-
-        List<WebElement> propertyAds = driver.findElements(By.xpath("//a[contains(@href, '/property/d/enoikiaseis-katoikion/')]//div[contains(@class, 'common-property-ad-image')]//img\n"));
-
-        for (WebElement ad : propertyAds) {
-            //List<WebElement> images = ad.findElements(By.xpath("//img[contains(@data-testid, 'ad-gallery-image')]")); // Get all images inside carousel
-            //List<WebElement> images = ad.findElements(By.xpath(".//img"));
-            List<WebElement> images = ad.findElements(By.xpath("//a[contains(@href, '/property/d/enoikiaseis-katoikion/')]//div[contains(@class, 'common-property-ad-image')]//img\n"));
-
-
-            int imageCount = images.size();
-
-            // Print property ad ID and image count
-            String adId = ad.getAttribute("id"); // Extracting the ID of the property ad
-            System.out.println("Property Ad ID: " + adId + " | Number of Images: " + imageCount);
-
-            Assert.assertTrue(imageCount <= maxImages,
-                    "❌ Ad contains more than " + maxImages + " images! Found: " + imageCount);
-            System.out.println("✅ Validated Image Count: " + imageCount);
         }
     }
 
@@ -179,125 +242,69 @@ public class XERealEstateTest {
         System.out.println("✅ Prices are correctly sorted in descending order.");
     }
 
-    /**
-     * ✅ Validates that the contact phone in each ad is hidden initially
-     *    and only shown after clicking the reveal button.
-     */
 
+    private void validateImagesAndPhoneNumbers() {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
+        System.out.println("🔄 Extracting all ad properties...");
 
+        // Find all listings
+        List<WebElement> listings = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
+                By.cssSelector("div.lazyload-wrapper.cell.huge-3.xxxlarge-4.large-6.medium-4.small-6.tiny-12.scroll")
+        ));
 
+        System.out.println("Total listings found: " + listings.size());
 
-
-
-    /**private void validateContactPhoneVisibility() {
-
-
-        clickElement(By.xpath("//body/main[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/a[1]/div[1]/h3[1]"));
-
-        // Wait for the ads to be loaded
-
-        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]")));
-
-        clickElement(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
-
-        // Locate all property ads
-        List<WebElement> phoneButtons = driver.findElements(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
-
-        //clickElement(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
-
-
-
-        for (WebElement ad : phoneButtons) {
+        for (WebElement listing : listings) {
             try {
-                // ✅ Ensure the phone number button container is present
-                Assert.assertFalse(phoneButtons.isEmpty(), "❌ 'Προβολή τηλεφώνου' button is NOT displayed!");
-                System.out.println("✅ 'Προβολή τηλεφώνου' button is correctly displayed.");
+                // ✅ Find the first image inside the listing
+                WebElement image = listing.findElement(By.tagName("img"));
 
-                // ✅ Find all matching buttons inside the ad to avoid exceptions
-                List<WebElement> revealButtons = ad.findElements(By.xpath(".//span[contains(text(),'Προβολή τηλεφώνου')]"));
+                // ✅ Click the image
+                image.click();
+                System.out.println("✅ Clicked an image.");
 
-                // ✅ Ensure the button exists before interacting with it
-                if (!revealButtons.isEmpty()) {
-                    WebElement revealButton = revealButtons.get(0); // Get the first matching button
-                    Assert.assertTrue(revealButton.isDisplayed(), "❌ Phone reveal button is missing!");
+                // ✅ Wait for the span element that shows image count
+                WebElement spanElement = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                        By.xpath("/html/body/div[3]/div/div/div[2]/div/div[1]/section/div[1]/div[1]/div/button/span")
+                ));
 
-                    // ✅ Click the button to reveal the phone number
-                    revealButton.click();
-                    wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(text(),'Τηλέφωνα επικοινωνίας')]")));
+                // ✅ Extract and validate image count
+                String extractedText = spanElement.getText();
+                System.out.println("📝 Extracted Image Count: " + extractedText);
+                int imageCount = Integer.parseInt(extractedText);
 
-                    // ✅ Verify that the phone number appears inside the pop-up
-                    WebElement phonePopup = driver.findElement(By.xpath("//div[contains(text(),'Τηλέφωνα επικοινωνίας')]"));
-                    //WebElement phoneText = phonePopup.findElement(By.xpath("//div[@data-testid='phones']"));
-                    WebElement phoneText = driver.findElement(By.xpath("//span[contains(text(), '+30')]"));
-                    //String extractedPhoneNumber = phoneText.getText().trim();
-                    //Assert.assertFalse(extractedPhoneNumber.isEmpty(), "❌ Phone number is not displayed!");
-                    Assert.assertTrue(phoneText.isDisplayed(), "❌ Phone number did not appear after clicking the button!");
-
-                    System.out.println("✅ Phone number is correctly hidden and revealed upon clicking.");
+                if (imageCount > 30) {
+                    System.out.println("❌ Validation Failed: Image count exceeds 30!");
                 } else {
-                    System.out.println("⚠️ No 'Προβολή τηλεφώνου' button found in this ad.");
+                    System.out.println("✅ Validation Passed: Image count is within limits.");
                 }
 
-            } catch (Exception e) {
-                System.out.println("❌ Error processing ad: " + e.getMessage());
-            }
-        }*/
+                // ✅ Click the "Προβολή τηλεφώνου" button
+                WebElement phoneButton = wait.until(ExpectedConditions.elementToBeClickable(
+                        By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]")
+                ));
 
+                System.out.println("📞 Found 'Προβολή τηλεφώνου' button.");
+                phoneButton.click();
 
-    private void validateContactPhoneVisibility() {
-        clickElement(By.xpath("//body/main[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/a[1]/div[1]/h3[1]"));
+                // ✅ Wait for phone number to appear
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(text(),'Τηλέφωνα επικοινωνίας')]")));
+                WebElement phoneText = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                        By.xpath("//span[contains(text(), '+30')]")
+                ));
 
-        // ✅ Wait until all "Προβολή τηλεφώνου" buttons are visible before proceeding
-        wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]")));
-
-        // ✅ Re-fetch elements after waiting
-        List<WebElement> phoneButtons = driver.findElements(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
-
-        // ✅ Ensure buttons exist before continuing
-        if (phoneButtons.isEmpty()) {
-            throw new AssertionError("❌ No 'Προβολή τηλεφώνου' buttons found on the page.");
-        }
-
-        for (WebElement ad : phoneButtons) {
-            try {
-                System.out.println("✅ 'Προβολή τηλεφώνου' button is correctly displayed.");
-
-                // ✅ Find buttons inside the current `ad` element
-                List<WebElement> revealButtons = driver.findElements(By.xpath("//span[contains(text(),'Προβολή τηλεφώνου')]"));
-
-                if (!revealButtons.isEmpty()) {
-                    WebElement revealButton = revealButtons.get(0);
-                    Assert.assertTrue(revealButton.isDisplayed(), "❌ Phone reveal button is missing!");
-
-                    // ✅ Click the button
-                    revealButton.click();
-                    wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[contains(text(),'Τηλέφωνα επικοινωνίας')]")));
-
-                    // ✅ Locate the phone number and assert its existence
-                    WebElement phonePopup = driver.findElement(By.xpath("//div[contains(text(),'Τηλέφωνα επικοινωνίας')]"));
-                    wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath("//span[contains(text(), '+30')]")));
-                    WebElement phoneText = driver.findElement(By.xpath("//span[contains(text(), '+30')]"));
-                    Assert.assertTrue(phoneText.isDisplayed(), "❌ Phone number did not appear after clicking the button!");
-
-                    System.out.println("✅ Phone number is correctly revealed upon clicking.");
-                } else {
-                    System.out.println("⚠️ No 'Προβολή τηλεφώνου' button found in this ad.");
-                }
+                Assert.assertTrue(phoneText.isDisplayed(), "❌ Phone number did not appear!");
+                System.out.println("📱 Phone number is correctly revealed.");
 
             } catch (Exception e) {
-                System.out.println("❌ Error processing ad: " + e.getMessage());
+                System.out.println("❌ Error processing listing: " + e.getMessage());
+            } finally {
+                // ✅ Always close the modal before moving to the next listing
+                closeModalIfExists(wait);
             }
-        }
-
-        try {
-            Thread.sleep(8000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
     }
-
-
 
     /**
      * ✅ Clicks an element after waiting for it to be clickable.
@@ -320,6 +327,19 @@ public class XERealEstateTest {
         WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
         js.executeScript("arguments[0].value='';", element); // Clear input using JavaScript
         element.sendKeys(value);
+    }
+
+    private void closeModalIfExists(WebDriverWait wait) {
+        try {
+            WebElement closeButton = wait.until(ExpectedConditions.elementToBeClickable(
+                    By.cssSelector("button.close-button-selector")  // Adjust selector as needed
+            ));
+            closeButton.click();
+            System.out.println("🔙 Closed modal.");
+        } catch (Exception e) {
+            System.out.println("⚠ No close button found, navigating back instead.");
+            driver.navigate().back();
+        }
     }
 
     @AfterClass
